@@ -1,0 +1,13 @@
+<h1>Se connecter</h1>
+<form  [formGroup]="form" (ngSubmit)="submit()">
+    
+        <mat-form-field>
+            <input matInput placeholder="Username" formControlName="username">
+        </mat-form-field>
+        <mat-form-field>
+            <input matInput type="password" placeholder="Password"
+                formControlName="password">
+        </mat-form-field>
+    
+    <button mat-raised-button type="submit" [disabled]="form.invalid || isSubmitting">@if (isSubmitting) { Chargement... } @else {Se connecter} </button>
+</form>

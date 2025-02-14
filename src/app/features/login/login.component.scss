@@ -1,0 +1,14 @@
+:host {
+    max-width: var(--form-max-width);
+    margin: auto;
+    width: 100%;
+    display: block;
+    text-align: center;
+
+    h1 {
+        font-weight: 400;
+        margin-bottom: 1em;
+        font-size: 2.4rem;
+    }
+    
+}

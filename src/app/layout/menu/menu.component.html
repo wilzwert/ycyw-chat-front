@@ -1,0 +1,29 @@
+<mat-toolbar>
+    <a class="home" routerLink=""><img src="assets/images/logo.png" alt="YourCarYourWay"></a>
+    <span class="spacer"></span>
+    <nav class="main-nav" [class.open]="isMobile && menuOpen">
+      <ul>
+        <li><a routerLink="" class="link">Home</a></li>
+    @if ($isSupport() | async) {
+        <li><a routerLink="support" class="link">Support interface</a></li>
+    }
+    @else {
+      <li><a routerLink="chat" class="link">Chat</a></li>
+    }
+    @if ($isLogged() | async) {
+      <li><a routerLink="logout" class="link">Logout</a></li>
+    }
+    @else {
+      <li><a routerLink="login" class="link">Login</a></li>
+    }
+  
+    </ul>
+  </nav>
+  @if( isMobile) {
+    <a class="open-nav" (click)="openNav()" aria-label="Ouvrir le menu de navigation"><mat-icon svgIcon="hamburger"></mat-icon></a>
+    @if (menuOpen) {
+      <div class="overlay" (click)="closeNav()"></div>
+    }
+  }
+
+</mat-toolbar>

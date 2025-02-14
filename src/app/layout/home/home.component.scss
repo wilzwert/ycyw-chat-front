@@ -1,0 +1,39 @@
+@use '@angular/material' as mat;
+
+:host {
+    max-width: 420px;
+    margin: auto;
+    width: 100%;
+    display: block;
+
+    @include mat.button-overrides((
+        container-color: #fff,
+        label-text-color: #000,
+    ));
+
+    h1 {
+        margin-bottom: 4em;
+    }
+
+    img {
+        display: block;
+        max-width: 100%;
+    }
+
+    div {
+        display: flex;
+        flex-wrap: wrap;
+        span {
+            flex: 1;
+            @media screen and (max-width: 575px) {
+                flex: 0 0 100%;
+            }
+
+            text-align: center;
+            a {
+                font-weight: 600;
+            }
+            margin: 2em auto;
+        }
+    }
+}
