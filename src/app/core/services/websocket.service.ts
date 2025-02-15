@@ -4,7 +4,6 @@ import { Client, Stomp, StompSubscription} from '@stomp/stompjs';
 import { Message } from '../models/message.interface';
 import { Subscription } from '../models/subscription.interface';
 import { SubscriptionCallBack } from '../types/subscription-callback.type';
-import { MessageType } from '../models/message-type';
 
 export type ListenerCallBack = (message: Message) => void;
 
@@ -74,6 +73,10 @@ export class WebsocketService implements OnDestroy {
   }
 
   sendMessage(destination: string, message: Message): void {
+    if(!this.client?.connected) {
+        this.client?.activate();
+
+    }
     this.client?.publish({destination: destination, body: JSON.stringify(message)});
   }
 

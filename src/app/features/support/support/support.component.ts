@@ -78,7 +78,7 @@ export class SupportComponent implements SupportContext, OnInit {
   };
 
   public removeChat(username: string): void {
-    
+    this.activeUsers = this.activeUsers.filter(u => u.username != username);
   }
 
   public handleUser(username: string) :void {

@@ -29,6 +29,11 @@ export class ChatHistoryService  {
     return this.globalHistory.map(entry => entry.recipient);
   }
 
+  public removeHistory(recipient: string) :void {
+    this.globalHistory = this.globalHistory.filter(e => e.recipient != recipient);
+    this.save();
+  }
+
   public getHistory(recipient: string): ChatHistoryEntry | undefined {
     return this.globalHistory.find(e => e.recipient == recipient);
   }

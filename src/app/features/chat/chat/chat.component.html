@@ -9,6 +9,12 @@
             @case (MessageType.JOIN) {
                 <div class="join-message">User has joined the chat.</div>
             }
+            @case (MessageType.TIMEOUT) {
+                <div class="timeout-message">{{message.content}}</div>
+            }
+            @case (MessageType.CLOSE) {
+                <div class="close-message">{{message.content}}</div>
+            }
             @default {
                 <div [class.sent-message]="message.sender == username" [class.received-message]="message.recipient == username">
                     {{message.content}}

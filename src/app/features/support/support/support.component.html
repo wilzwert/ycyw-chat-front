@@ -5,7 +5,7 @@
     </div>
     <div class="chats">
         @for(user of activeUsers; track user.username) {
-            <app-chat [recipient]="user" [username]="currentUsername" [hidden]="activeUser !== user"></app-chat>
+            <app-chat [recipient]="user" (remove)="removeChat($event)" [username]="currentUsername" [hidden]="activeUser !== user"></app-chat>
         }
     </div>
 </div>

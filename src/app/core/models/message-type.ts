@@ -7,5 +7,7 @@ export enum MessageType {
     QUIT = 'QUIT',
     JOIN = 'JOIN',
     PING = 'PING',
-    PING_RESPONSE = 'PING_RESPONSE'
+    PING_RESPONSE = 'PING_RESPONSE',
+    TIMEOUT = 'TIMEOUT',
+    CLOSE = 'CLOSE'
   }
