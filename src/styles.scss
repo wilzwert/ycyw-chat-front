@@ -1,0 +1,63 @@
+/* You can add global styles to this file, and also import other style files */
+
+@use '@angular/material' as mat;
+
+// Customize the entire app. Change :root to your selector if you want to scope the styles.
+:root {
+  --ui-font-size: 1.6rem;
+  --content-font-size: 1.4rem;
+  --app-max-width: 835px;
+  --title-font-size: 2.4rem;
+  --form-max-width: 420px;
+  --main-color: #7763C5;
+
+  @include mat.button-overrides((
+    container-color: var(--main-color),
+    label-text-color: #fff,
+    outline-color: #000
+  ));
+
+  @include mat.toolbar-overrides((
+    container-background-color: #fff,
+    container-text-color: var(--main-color),
+    standard-height: 94px,
+    mobile-height: 62px
+  ));
+
+}
+
+html {
+  font-family: Inter;
+  font-size: 12px;
+}
+
+body {
+  margin: 0;
+  padding-top: calc(var(--mat-toolbar-standard-height) + 6rem);
+  padding-bottom: 2rem;
+}
+
+.chat-wrapper {
+    display: flex;
+    height: 80vh;
+}
+
+.user {
+    cursor: pointer;
+    padding: .5em 1em;
+    border-radius: 5px;
+    text-align: center;
+    background: #aaaaaa;
+    margin-bottom: .5em;
+}
+
+.user.active {
+    cursor: default;
+    background: #fff;
+    font-weight: 700;
+}
+
+.username {
+    display: inline-block;
+    vertical-align: middle;
+}

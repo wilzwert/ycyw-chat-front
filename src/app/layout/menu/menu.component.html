@@ -11,7 +11,7 @@
       <li><a routerLink="chat" class="link">Chat</a></li>
     }
     @if ($isLogged() | async) {
-      <li><a routerLink="logout" class="link">Logout</a></li>
+      <li><a routerLink="logout" class="link" (click)="logout()">Logout</a></li>
     }
     @else {
       <li><a routerLink="login" class="link">Login</a></li>

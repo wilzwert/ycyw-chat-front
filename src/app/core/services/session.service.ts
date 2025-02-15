@@ -40,6 +40,14 @@ export class SessionService {
     return this.tokenStorageService.getToken();
   }
 
+  public getRole() :string | null {
+    return this.tokenStorageService.getRole();
+  }
+
+  public getUsername() :string | null {
+    return this.tokenStorageService.getUsername();
+  }
+
   public getTokenType() :string | null {
     return this.tokenStorageService.getTokenType();
   }

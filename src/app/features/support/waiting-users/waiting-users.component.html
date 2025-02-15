@@ -1,1 +1,6 @@
-<p>waiting-users works!</p>
+@let users = users$ | async;
+@if(users?.length) {
+    @for (user of users ; track $index) {
+        <p class="user" (click)="onClick(user)">{{ user }} OK</p>    
+    }
+}

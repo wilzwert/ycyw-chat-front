@@ -34,6 +34,10 @@ export class MenuComponent implements OnInit, OnDestroy {
     return this.sessionService.$isSupport();
   }
 
+  public logout(): void {
+    this.sessionService.logOut();
+  }
+
   public openNav() :void {
     if(this.isMobile) {
       this.menuOpen = true;

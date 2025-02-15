@@ -9,5 +9,5 @@
                 formControlName="password">
         </mat-form-field>
     
-    <button mat-raised-button type="submit" [disabled]="form.invalid || isSubmitting">@if (isSubmitting) { Chargement... } @else {Se connecter} </button>
+    <button mat-raised-button type="submit" [disabled]="form.invalid || isSubmitting">@if (isSubmitting) { Loading... } @else {Login} </button>
 </form>

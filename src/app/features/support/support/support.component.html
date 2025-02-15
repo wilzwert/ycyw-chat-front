@@ -1,1 +1,11 @@
-<app-users></app-users>
+<div class="chat-wrapper">
+    <div class="users">
+        <app-active-users class="active-users" [users]="activeUsers" [activeUser]="activeUser" (select)="selectChat($event)"></app-active-users>
+        <app-waiting-users class="waiting-users" (handle)="handleUser($event)"></app-waiting-users>
+    </div>
+    <div class="chats">
+        @for(user of activeUsers; track user.username) {
+            <app-chat [recipient]="user" [username]="currentUsername" [hidden]="activeUser !== user"></app-chat>
+        }
+    </div>
+</div>

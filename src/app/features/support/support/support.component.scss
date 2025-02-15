@@ -1,0 +1,30 @@
+.users {
+    flex: 0 0 160px;
+    background-color: #003c97;
+    padding: 1.5em;
+    font-size: .75em;
+    text-align: center;
+    justify-content: space-between;
+    display: flex;
+    flex-direction: column;
+}
+
+.active-users:before {
+    content: "Opened chats";
+    display: block;
+    color: #fff;
+    margin-bottom: 1em;
+    font-size: 1rem;
+}
+
+.waiting-users:before {
+    content: "Waiting users";
+    display: block;
+    color: #fff;
+    margin-bottom: 1em;
+    font-size: 1rem;
+}
+
+.chats {
+    flex: 1 0;
+}

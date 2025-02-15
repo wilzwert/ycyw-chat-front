@@ -7,7 +7,7 @@ import { MenuComponent } from "./layout/menu/menu.component";
   standalone: true,
   imports: [RouterOutlet, MenuComponent],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.less'
+  styleUrl: './app.component.scss'
 })
 export class AppComponent {
   title = 'ycyw-chat-front';

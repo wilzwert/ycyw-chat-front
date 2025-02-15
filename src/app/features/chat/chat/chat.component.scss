@@ -1,0 +1,74 @@
+.chat {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #999;
+}
+.messages {
+    flex: 1 0;
+    overflow: auto;
+    padding: 1em;
+    position: relative;
+}
+
+.message {
+    margin-bottom: .5em;
+}
+.message::after {
+    display: block;
+    clear: both;
+    content: "";
+}
+
+.sent-message, .received-message {
+    padding: .5em 1em;
+    border-radius: 5px;
+    max-width: 80%;
+    width: fit-content;
+}
+
+.sent-message {
+    background-color: #003c97;
+    color: #fff;
+    float: right;
+}
+
+.received-message {
+    background-color: #aaa;
+    float: left;
+}
+
+.quit-message, .join-message {
+    font-style: italic;
+    font-size: .8em;
+}
+
+.message-form {
+    flex: 0 0;
+    padding: .5em 1em;
+}
+
+.message-form form {
+    display: flex;
+}
+
+.message-form input {
+    flex: 1 0;
+}
+.message-form button {
+    flex: 0 0;
+}
+
+input[type="text"],input[type="password"], button {
+    font-size: .8rem;
+}
+
+.display-typing  {
+    position: absolute;
+    bottom: 0;
+    right: 1rem;
+    float: right;
+    font-style: italic;
+    font-size: 0.8rem;
+}
