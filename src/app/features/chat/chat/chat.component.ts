@@ -97,7 +97,6 @@ export class ChatComponent implements OnInit {
 
   // ping the recipient to check if it is available
   private ping(): void {
-    console.log('pinging');
       let delay = Math.floor((Date.now() - this.lastReceived) / 1000);
       // nothing happened for a certain amount of time
       if(delay >= ChatComponent.TIMEOUT) {
