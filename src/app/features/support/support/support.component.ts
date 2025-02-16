@@ -37,13 +37,11 @@ export class SupportComponent implements SupportContext, OnInit {
     this.currentUsername = this.sessionService.getUsername() ?? '';
 
     // restore history if possible
-    this.activeUsers =  this.chatHistoryService.getRecipients()
-      .map((recipient: string) => {return {username: recipient, newMessagesCount: 0} as User;})
+    this.activeUsers =  this.chatHistoryService.getRecipients();
 
     this.activeUsers.forEach(u => {
-      console.log(u);
-      this.userService.removeWaitingUser(u.username);
-      this.websocketService.subscribe(`/user/queue/messages/${u.username}`, this.receiveMessage.bind(this));
+      this.userService.removeWaitingUser(u);
+      this.websocketService.subscribe(`/user/queue/messages/${u.conversationId}`, this.receiveMessage.bind(this));
     });
 
     if(this.activeUsers.length) {
@@ -77,23 +75,22 @@ export class SupportComponent implements SupportContext, OnInit {
     }
   };
 
-  public removeChat(username: string): void {
-    this.activeUsers = this.activeUsers.filter(u => u.username != username);
+  public removeChat(user: User): void {
+    this.activeUsers = this.activeUsers.filter(u => u.conversationId != user.conversationId);
   }
 
-  public handleUser(username: string) :void {
+  public handleUser(user: User) :void {
       // send handle message
-      this.websocketService.sendMessage("/app/support", {type: MessageType.HANDLE, sender: this.currentUsername, recipient: username, content: username} as Message);
+      this.websocketService.sendMessage("/app/support", {type: MessageType.HANDLE, sender: this.currentUsername, recipient: user.username, content: user.username, conversationId: user.conversationId} as Message);
 
       // add user to active users
-      let user = {username: username,newMessagesCount: 0} as User;
       this.activeUsers.push(user);
-      this.websocketService.subscribe(`/user/queue/messages/${username}`, this.receiveMessage.bind(this));
+      this.websocketService.subscribe(`/user/queue/messages/${user.conversationId}`, this.receiveMessage.bind(this));
       
       // display chat interface
       this.activeUser = user;
 
       // remove waiting user
-      this.userService.removeWaitingUser(username);
+      this.userService.removeWaitingUser(user);
   }
 }

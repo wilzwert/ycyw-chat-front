@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { ChatHistoryService } from '../../../core/services/chat-history.service';
 import { User } from '../../../core/models/user.interface';
 import { WebsocketService } from '../../../core/services/websocket.service';
@@ -14,18 +14,18 @@ import { ChatHistoryEntry } from '../../../core/models/chat-history-entry';
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'
 })
-export class ChatComponent implements OnInit {
+export class ChatComponent implements OnInit, OnDestroy {
   static TIMEOUT = 5;
   static PING_DELAY = 2;
 
   @Input({required: true}) recipient!: User;
   @Input({required: true}) username!: string;
-  @Output() remove = new EventEmitter<string>();
+  @Output() remove = new EventEmitter<User>();
   
   isTyping = false;
   messages: Message[] = [];
   MessageType = MessageType;
-  private lastReceived: number = 0;
+  private lastReceived: number = Date.now();
   public form:FormGroup;
 
   constructor(private websocketService: WebsocketService, private fb: FormBuilder, private chatHistoryService: ChatHistoryService) {
@@ -42,23 +42,22 @@ export class ChatComponent implements OnInit {
   private addMessage(message: Message) :void {
     this.messages.push(message);
     if(message.type == MessageType.MESSAGE) {
-      this.chatHistoryService.addMessage(this.recipient.username, message);
+      this.chatHistoryService.addMessage(this.recipient, message);
     }
   }
 
   private replyToPing(): void {
     console.log(`replying to ping from ${this.recipient.username}`);
-    this.websocketService.sendMessage("/app/private", {type: MessageType.PING_RESPONSE, content: "", sender: this.username, recipient: this.recipient.username});
+    this.websocketService.sendMessage("/app/private", {type: MessageType.PING_RESPONSE, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
   }
 
   public send() :void {
-    const message: Message = {sender: this.username, recipient: this.recipient.username, type: MessageType.MESSAGE, content: this.form.value.message};
+    const message: Message = {sender: this.username, recipient: this.recipient.username, type: MessageType.MESSAGE, content: this.form.value.message, conversationId: this.recipient.conversationId};
     // TODO : sendMessage should return an observable so that we can watch for errors ?
     console.log("should send ", message);
     this.websocketService.sendMessage("/app/private", message);
     this.addMessage(message);
     this.form.reset();
-    this.chatHistoryService.addMessage(this.recipient.username, message);
   }
 
   private receiveMessage(message: Message) :void {
@@ -86,9 +85,10 @@ export class ChatComponent implements OnInit {
   checkPingTimeout() {
     let delay = Math.floor((Date.now() - this.lastReceived) / 1000);
     if(delay > ChatComponent.TIMEOUT) {
-        this.addMessage({type: MessageType.TIMEOUT, content: "User is unreachable ; chat will be closed and history will be deleted.", sender: this.recipient.username, recipient: this.username});
-        this.chatHistoryService.removeHistory(this.recipient.username);
-        this.remove.emit(this.recipient.username);
+        console.log(`delay ${delay}`);
+        this.addMessage({type: MessageType.TIMEOUT, content: "User is unreachable ; chat will be closed and history will be deleted.", sender: this.recipient.username, recipient: this.username, conversationId: this.recipient.conversationId});
+        this.chatHistoryService.removeHistory(this.recipient);
+        this.remove.emit(this.recipient);
     }
     else {
       setTimeout(this.ping.bind(this), ChatComponent.PING_DELAY*1000);
@@ -105,7 +105,7 @@ export class ChatComponent implements OnInit {
           // but we should probably make the client connection status an Observable to trigger sendMessage(s) when connection becomes available
           // for this POC a "repeat" with a timeout will do though
           try {
-            this.websocketService.sendMessage("/app/private", {type: MessageType.PING, content: "", sender: this.username, recipient: this.recipient.username});
+            this.websocketService.sendMessage("/app/private", {type: MessageType.PING, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
             // next time we check we specifically check if something happend after our ping message
             setTimeout(this.checkPingTimeout.bind(this), ChatComponent.PING_DELAY*1000);
           }
@@ -128,11 +128,15 @@ export class ChatComponent implements OnInit {
         this.restoreHistory(chatHistoryEntry);
       }
       else {
-        this.chatHistoryService.createHistory(this.recipient.username);
+        this.chatHistoryService.createHistory(this.recipient);
       }
-      this.websocketService.subscribe(`/user/queue/messages/${this.recipient.username}`, this.receiveMessage.bind(this));
+      this.websocketService.subscribe(`/user/queue/messages/${this.recipient.conversationId}`, this.receiveMessage.bind(this));
 
       // start ping
       this.ping();
+  }
+
+  public ngOnDestroy(): void {
+     console.log('should unsubscribe all channels !');
   }
 }

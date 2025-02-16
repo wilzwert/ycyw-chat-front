@@ -2,6 +2,8 @@ import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { UserService } from '../../../core/services/user.service';
 import { Observable } from 'rxjs';
 import { AsyncPipe } from '@angular/common';
+import { ApiChatUser } from '../../../core/models/api-chat-user.interface';
+import { User } from '../../../core/models/user.interface';
 
 @Component({
   selector: 'app-waiting-users',
@@ -12,16 +14,16 @@ import { AsyncPipe } from '@angular/common';
 })
 export class WaitingUsersComponent implements OnInit {
 
-  @Output() handle = new EventEmitter<string>();
+  @Output() handle = new EventEmitter<User>();
 
-  public users$!: Observable<string[]>;
+  public users$!: Observable<User[]>;
 
   constructor(private userService: UserService){
 
   }
 
-  onClick(username: string) {
-    this.handle.emit(username);
+  onClick(user: User) {
+    this.handle.emit(user);
   }
 
 

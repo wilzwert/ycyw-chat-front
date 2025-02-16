@@ -5,4 +5,5 @@ export interface Message {
     sender: string;
     recipient: string;
     content: string;
+    conversationId: string;
 }
