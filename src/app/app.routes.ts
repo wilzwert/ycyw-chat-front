@@ -1,10 +1,10 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './features/login/login.component';
-import { UnauthGuard } from './core/guards/unauth.guard';
 import { HomeComponent } from './layout/home/home.component';
 import { SupportComponent } from './features/support/support/support.component';
 import { ChatComponent } from './features/chat/chat/chat.component';
 import { SupportGuard } from './core/guards/support.guard';
+import { AnonymousGuard } from './core/guards/anonymous.guard';
 
 export const routes: Routes = [
     { 
@@ -14,22 +14,19 @@ export const routes: Routes = [
     },
     { 
         path: 'login',
-        canActivate: [UnauthGuard], 
+        canActivate: [AnonymousGuard], 
         component: LoginComponent,
-        title: 'Log in',
-        data: {goBackToRoute: ""} 
+        title: 'Log in'
     },
     { 
         path: 'chat',
         component: ChatComponent,
-        title: 'Chat',
-        data: {goBackToRoute: ""} 
+        title: 'Chat'
     },
     { 
         path: 'support',
         canActivate: [SupportGuard], 
         component: SupportComponent,
-        title: 'Support',
-        data: {goBackToRoute: ""} 
+        title: 'Support'
     },
 ];

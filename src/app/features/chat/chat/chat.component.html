@@ -1,37 +1,8 @@
-<div class="chat">
-<div class="messages">
-@for(message of messages; track $index) {
-    <div class="message">
-        @switch (message.type) {
-            @case (MessageType.QUIT) {
-                <div class="quit-message">User has left the chat.</div>
-            }
-            @case (MessageType.JOIN) {
-                <div class="join-message">User has joined the chat.</div>
-            }
-            @case (MessageType.TIMEOUT) {
-                <div class="timeout-message">{{message.content}}</div>
-            }
-            @case (MessageType.CLOSE) {
-                <div class="close-message">{{message.content}}</div>
-            }
-            @default {
-                <div [class.sent-message]="message.sender == username" [class.received-message]="message.recipient == username">
-                    {{message.content}}
-                </div>
-            }
-        }
+@if(recipient) {
+    <div class="chat-wrapper">
+    <app-conversation [recipient]="recipient" (remove)="closeChat($event)" [username]="currentUsername"></app-conversation>
     </div>
 }
-
-@if(isTyping) {
-    <div class="display-typing">User is typing...</div>    
+@else {
+    <p>Please wait, we are connecting you to one of our agents.</p>
 }
-</div>
-<div class="message-form">
-    <form  [formGroup]="form" (ngSubmit)="send()">
-        <input type="text" name="message" formControlName="message" placeholder="Type your message">
-        <button type="submit" [disabled]="form.invalid">Send</button>
-</form>
-</div>
-</div>

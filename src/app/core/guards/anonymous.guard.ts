@@ -5,13 +5,13 @@ import { SessionService } from '../services/session.service';
 @Injectable({
   providedIn: 'root'
 })
-export class UnauthGuard implements CanActivate {
+export class AnonymousGuard implements CanActivate {
   constructor(private router: Router, private sessionService: SessionService) {}
 
   canActivate(): boolean {
-    if(this.sessionService.isLogged()) {
+    if(this.sessionService.isLogged() && this.sessionService.getRole() != 'ANONYMOUS') {
       this.router.navigate(['']);
     }
-    return !this.sessionService.isLogged();
+    return !this.sessionService.isLogged() || this.sessionService.getRole() == 'ANONYMOUS';
   }
 }

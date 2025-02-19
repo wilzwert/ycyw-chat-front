@@ -10,7 +10,7 @@
     @else {
       <li><a routerLink="chat" class="link">Chat</a></li>
     }
-    @if ($isLogged() | async) {
+    @if (($isLogged() | async) && ($getRole() |async) != "ANONYMOUS") {
       <li><a routerLink="logout" class="link" (click)="logout()">Logout</a></li>
     }
     @else {

@@ -23,46 +23,51 @@ export class UserService implements OnInit {
   }
 
   /**
-   * Retrieves the topics after reloading them from the backend if needed
-   * @returns the topics 
+   * Retrieves the waiting users from API endpoint and watches for updates from websocket
+   * @returns the users
    */
   getWaitingUsers(): Observable<User[]> {
-    console.log('wrtfffff');
     return this.waitingUsersSubject.pipe(
       switchMap((users: User[] | null) =>  {
+        // don't fully reload users if already present
         if(null !== users) {
-          console.log("on a déjà");
-          console.log(users);
           return of(users);
         }
+        // load from API
         return this.dataService.get<ApiChatUser[]>(`${this.apiPath}?filter=waiting`).pipe(
             switchMap((fetchedUsers: ApiChatUser[]) => {
+              // watch for waiting users update from websocket
               let users = fetchedUsers.map(apiUser => {return {username: apiUser.username, conversationId: apiUser.conversationId, newMessagesCount: 0} as User});
-
-              console.log('get waiting users ?');
               this.websocketService.subscribe("/topic/support", (message: Message) =>  {
-                if(message.type == MessageType.START) {
-                  console.log('got a new waiting user ');
-                  const prevUsers = this.waitingUsersSubject.getValue();
-                  if(prevUsers !== null) {
-                    console.log('push waiting users ?');
-                    prevUsers?.push({username: message.sender, conversationId: message.conversationId} as User);
+                const prevUsers = this.waitingUsersSubject.getValue();
+                if(prevUsers !== null) {
+                  const user = {username: message.sender, conversationId: message.conversationId} as User;
+                  const existingUserIndex = prevUsers.findIndex(u => u.conversationId == user.conversationId);
+                  // at this point, only START and QUIT messages are useful
+                  if(message.type == MessageType.START || message.type == MessageType.QUIT) {
+                    // if START, there is no point adding a pre existing user
+                    if(message.type == MessageType.START && existingUserIndex < 0) {
+                      prevUsers?.push(user);
+                      this.waitingUsersSubject.next(prevUsers);
+                    }
+                    // if QUIT, there is no point removing a non existing user
+                    if(message.type == MessageType.QUIT && existingUserIndex >= 0) {
+                      prevUsers.splice(existingUserIndex, 1);
+                      this.waitingUsersSubject.next(prevUsers);
+                    }
                   }
-                  console.log('emit next value ?');
-                  this.waitingUsersSubject.next(prevUsers);
                 }
-              })
-              console.log('ouaip on renvoie les feteched', fetchedUsers.length)
-              this.waitingUsersSubject.next(users);
-              return of(users);
-            })
+              }
+            );
+            this.waitingUsersSubject.next(users);
+            return of(users);
+          })
         );
       }));
   }
 
   public removeWaitingUser(user: User) :void {
     const current = this.waitingUsersSubject.getValue();
-    console.log(current);
     if(current != null) {
       let newValue = current.filter((u: User) => u.conversationId != user.conversationId);
       this.waitingUsersSubject.next(newValue);

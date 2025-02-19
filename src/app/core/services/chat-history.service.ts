@@ -7,20 +7,23 @@ import { User } from '../models/user.interface';
 @Injectable({
   providedIn: 'root'
 })
-export class ChatHistoryService  {
+export class ChatHistoryService {
 
   private globalHistory: ChatHistoryEntry[] = [];
 
   constructor(private sessionService: SessionService) {
+    this.sessionService.$isLogged().subscribe(this.init.bind(this));
+  }
+
+  public init() :void {
     const history = window.localStorage.getItem("chat-history");
     if(history) {
       const historyObject = JSON.parse(history);
       if(historyObject.owner == this.sessionService.getUsername()) {
-        console.log(`${historyObject.owner} :: ${this.sessionService.getUsername()}`);
         this.globalHistory = historyObject.entries;
       }
     }
-   }
+  }
 
   private save() {
     window.localStorage.setItem("chat-history", JSON.stringify({owner: this.sessionService.getUsername(), entries: this.globalHistory}));
@@ -31,17 +34,15 @@ export class ChatHistoryService  {
   }
 
   public removeHistory(recipient: User) :void {
-    console.log(`removing ${recipient.conversationId}`);
     this.globalHistory = this.globalHistory.filter(e => e.conversationId != recipient.conversationId);
     this.save();
   }
 
-  public getHistory(recipient: string): ChatHistoryEntry | undefined {
-    return this.globalHistory.find(e => e.recipient == recipient);
+  public getHistory(conversationId: string): ChatHistoryEntry | undefined {
+    return this.globalHistory.find(e => e.conversationId == conversationId);
   }
 
   public createHistory(recipient: User) :ChatHistoryEntry {
-    console.log(`createHistory ${recipient.username}`);
     let entry = {conversationId: recipient.conversationId, recipient: recipient.username, messages: []} as ChatHistoryEntry; 
     this.globalHistory.push(entry);
     this.save();
@@ -49,7 +50,6 @@ export class ChatHistoryService  {
   }
 
   public addMessage(recipient: User, message: Message) :void {
-    console.log(`add message ${message.content} to history for conversation ${recipient.conversationId}`);
     let entry = this.globalHistory.find(entry => entry.conversationId == recipient.conversationId);
     if(!entry) {
       entry = {conversationId: recipient.conversationId, recipient: message.recipient, messages: []} as ChatHistoryEntry;

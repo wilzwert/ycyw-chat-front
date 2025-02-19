@@ -16,4 +16,8 @@ export class AuthService {
   public login(loginRequest: LoginRequest): Observable<SessionInformation> {
     return this.dataService.post<SessionInformation>(`${this.apiPath}/login`, loginRequest);
   }
+
+  public anonymousLogin(): Observable<SessionInformation> {
+    return this.dataService.post<SessionInformation>(`${this.apiPath}/login`, null);
+  }
 }
