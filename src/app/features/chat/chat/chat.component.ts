@@ -1,138 +1,96 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { WebsocketService } from '../../../core/services/websocket.service';
+import { ConversationComponent } from '../conversation/conversation.component';
+import { SessionService } from '../../../core/services/session.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { catchError, Subject, takeUntil, throwError } from 'rxjs';
+import { ApiError } from '../../../core/errors/api-error';
+import { SessionInformation } from '../../../core/models/session-information.interface';
+import { Message } from '../../../core/models/message.interface';
 import { ChatHistoryService } from '../../../core/services/chat-history.service';
 import { User } from '../../../core/models/user.interface';
-import { WebsocketService } from '../../../core/services/websocket.service';
-import { Message } from '../../../core/models/message.interface';
 import { MessageType } from '../../../core/models/message-type';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { ChatHistoryEntry } from '../../../core/models/chat-history-entry';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ConversationComponent],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'
 })
 export class ChatComponent implements OnInit {
-  static TIMEOUT = 5;
-  static PING_DELAY = 2;
 
-  @Input({required: true}) recipient!: User;
-  @Input({required: true}) username!: string;
-  @Output() remove = new EventEmitter<string>();
+  private destroy$: Subject<boolean> = new Subject<boolean>();
+
+  conversationId: string | undefined;
+  recipient: User | undefined;
+  currentUsername: string = '';
+
+  constructor(private router: Router, private websocketService: WebsocketService, private sessionService: SessionService, private authService: AuthService, private chatHistoryService: ChatHistoryService){}
   
-  isTyping = false;
-  messages: Message[] = [];
-  MessageType = MessageType;
-  private lastReceived: number = 0;
-  public form:FormGroup;
-
-  constructor(private websocketService: WebsocketService, private fb: FormBuilder, private chatHistoryService: ChatHistoryService) {
-    this.form = this.fb.group({
-      message: [
-        '', 
-        [
-          Validators.required
-        ]
-      ]
-    });
-  }
-
-  private addMessage(message: Message) :void {
-    this.messages.push(message);
-    if(message.type == MessageType.MESSAGE) {
-      this.chatHistoryService.addMessage(this.recipient.username, message);
-    }
-  }
-
-  private replyToPing(): void {
-    console.log(`replying to ping from ${this.recipient.username}`);
-    this.websocketService.sendMessage("/app/private", {type: MessageType.PING_RESPONSE, content: "", sender: this.username, recipient: this.recipient.username});
-  }
-
-  public send() :void {
-    const message: Message = {sender: this.username, recipient: this.recipient.username, type: MessageType.MESSAGE, content: this.form.value.message};
-    // TODO : sendMessage should return an observable so that we can watch for errors ?
-    console.log("should send ", message);
-    this.websocketService.sendMessage("/app/private", message);
-    this.addMessage(message);
-    this.form.reset();
-    this.chatHistoryService.addMessage(this.recipient.username, message);
-  }
-
-  private receiveMessage(message: Message) :void {
-    this.lastReceived = Date.now();
-    console.log(`Chat handling ${message.type}`);
+  public receiveMessage(message: Message): void {
     switch(message.type) {
-      case MessageType.TYPING: this.isTyping = true;break;
-      case MessageType.STOP_TYPING: this.isTyping = false; break;
-      case MessageType.MESSAGE: 
-      case MessageType.JOIN:
-      case MessageType.QUIT:
-      case MessageType.TIMEOUT:
-      case MessageType.CLOSE:
-        this.addMessage(message); 
+      case MessageType.HANDLE: 
+        // set recipient
+        this.recipient = {username: message.sender, conversationId: message.conversationId} as User;
         break;
-      case MessageType.PING: this.replyToPing(); break;
-      case MessageType.PING_RESPONSE: break;
+      case MessageType.START: 
+        this.conversationId = message.conversationId;
+        break;
     }
   }
-  
-  private restoreHistory(chatHistoryEntry: ChatHistoryEntry) :void {
-    chatHistoryEntry.messages.forEach(m => this.messages.push(m));
-  }
 
-  checkPingTimeout() {
-    let delay = Math.floor((Date.now() - this.lastReceived) / 1000);
-    if(delay > ChatComponent.TIMEOUT) {
-        this.addMessage({type: MessageType.TIMEOUT, content: "User is unreachable ; chat will be closed and history will be deleted.", sender: this.recipient.username, recipient: this.username});
-        this.chatHistoryService.removeHistory(this.recipient.username);
-        this.remove.emit(this.recipient.username);
+  private initChat(): void {
+    this.currentUsername = this.sessionService.getUsername() ?? '';
+    
+    // restore history if possible
+    const activeUsers =  this.chatHistoryService.getRecipients();
+    if(activeUsers.length) {
+      this.recipient = activeUsers[0];
     }
     else {
-      setTimeout(this.ping.bind(this), ChatComponent.PING_DELAY*1000);
+      this.websocketService.subscribe(`/user/queue/messages`, this.receiveMessage.bind(this));
+      this.websocketService.sendMessage('/app/support', {sender: this.currentUsername, type: MessageType.START, content: '', } as Message);
     }
-}
+  }
 
-  // ping the recipient to check if it is available
-  private ping(): void {
-      let delay = Math.floor((Date.now() - this.lastReceived) / 1000);
-      // nothing happened for a certain amount of time
-      if(delay >= ChatComponent.TIMEOUT) {
-          // let's send a ping message, or at least try
-          // FIXME : here we catch an exception in case the WebSocketService's client is not connected
-          // but we should probably make the client connection status an Observable to trigger sendMessage(s) when connection becomes available
-          // for this POC a "repeat" with a timeout will do though
-          try {
-            this.websocketService.sendMessage("/app/private", {type: MessageType.PING, content: "", sender: this.username, recipient: this.recipient.username});
-            // next time we check we specifically check if something happend after our ping message
-            setTimeout(this.checkPingTimeout.bind(this), ChatComponent.PING_DELAY*1000);
-          }
-          catch(e) {
-            // alright, we caught an exception, let's try again later
-            setTimeout(this.ping.bind(this), ChatComponent.PING_DELAY*1000);  
-          }
-      }
-      // everything's fine for now, let's check later
-      else {
-          setTimeout(this.ping.bind(this), ChatComponent.PING_DELAY*1000);
+  public closeChat(user: User): void {
+    this.recipient = undefined;
+    this.router.navigate(["/"]);
+  }
+
+  ngOnInit(): void {
+    // in case user gets logged in, we can (re)init chat
+    // logged in may mean "anonymously" logged in, which is ok to chat
+    this.sessionService.$isLogged()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((v) => {if(v) {this.initChat();}});
+      
+    // anonymous login if needed
+    if(this.sessionService.getToken() == null) {
+      this.authService.anonymousLogin()
+          .pipe(
+            takeUntil(this.destroy$),
+            catchError(
+              (error: ApiError) => {
+                return throwError(() => new Error(
+                  'Anonymous login failed.'
+                ));
+              }
+            )
+          )
+          .subscribe(
+            (response: SessionInformation) => {
+              this.sessionService.logIn(response);
+            }
+          )
       }
   }
 
-  public ngOnInit(): void {
-      // TODO : restore from history ?
-      let chatHistoryEntry = this.chatHistoryService.getHistory(this.recipient.username);
-      if(chatHistoryEntry) {
-        console.log('restoreFromHistory');
-        this.restoreHistory(chatHistoryEntry);
-      }
-      else {
-        this.chatHistoryService.createHistory(this.recipient.username);
-      }
-      this.websocketService.subscribe(`/user/queue/messages/${this.recipient.username}`, this.receiveMessage.bind(this));
-
-      // start ping
-      this.ping();
+  public ngOnDestroy(): void {
+    // emit to Subject to unsubscribe from observables
+    this.destroy$.next(true);
+    this.websocketService.sendMessage("/app/support", {type: MessageType.QUIT, content: "", sender: this.currentUsername, recipient: "", conversationId: this.conversationId} as Message);
   }
 }

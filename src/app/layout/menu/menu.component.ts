@@ -30,12 +30,18 @@ export class MenuComponent implements OnInit, OnDestroy {
     return this.sessionService.$isLogged();
   }
 
+  public $getRole(): Observable<string | null> {
+    return this.sessionService.$getRole();
+  }
+
   public $isSupport(): Observable<boolean> {
     return this.sessionService.$isSupport();
   }
 
   public logout(): void {
     this.sessionService.logOut();
+    this.router.navigate([""]);
+
   }
 
   public openNav() :void {

@@ -11,9 +11,13 @@ export class SessionService {
 
   public logged = false;
   public support = false;
+  public role: string | null = null;
+  public token: string | null = null;
 
   private isLoggedSubject = new BehaviorSubject<boolean>(this.logged);
   private isSupportSubject = new BehaviorSubject<boolean>(this.support);
+  private roleSubject = new BehaviorSubject<string | null>(this.role);
+  private tokenSubject = new BehaviorSubject<string | null>(this.token);
 
   constructor(
     private tokenStorageService: TokenStorageService, 
@@ -24,6 +28,8 @@ export class SessionService {
       if(this.tokenStorageService.getRole() == "SUPPORT") {
         this.support = true;
       }
+
+      this.role = this.tokenStorageService.getRole();
       this.next();
     }
   }
@@ -56,8 +62,16 @@ export class SessionService {
     return this.isLoggedSubject.asObservable();
   }
 
+  public $getToken(): Observable<string | null> {
+    return this.tokenSubject.asObservable();
+  }
+
   public $isSupport(): Observable<boolean> {
     return this.isSupportSubject.asObservable();
+  }
+
+  public $getRole(): Observable<string | null> {
+    return this.roleSubject.asObservable();
   }
 
   public logIn(data: SessionInformation): void {
@@ -66,6 +80,8 @@ export class SessionService {
     if(this.tokenStorageService.getRole() == "SUPPORT") {
       this.support = true;
     }
+    this.role = this.tokenStorageService.getRole();
+    this.token = this.tokenStorageService.getToken();
     this.next();
   }
 
@@ -73,6 +89,9 @@ export class SessionService {
     // clear user and session related data from storage
     this.tokenStorageService.clearSessionInformation();
     this.logged = false;
+    this.support = false;
+    this.role = null;
+    this.token = null;
     this.next();
     this.router.navigate(['']);
   }
@@ -80,5 +99,6 @@ export class SessionService {
   private next(): void {
     this.isLoggedSubject.next(this.logged);
     this.isSupportSubject.next(this.support);
+    this.roleSubject.next(this.role);
   }
 }

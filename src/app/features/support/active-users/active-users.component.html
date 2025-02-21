@@ -1,3 +1,3 @@
-@for(user of users; track user) {
+@for(user of users; track user.conversationId) {
     <p class="user" [class.active]="user == activeUser" (click)="onClick(user)"><span>{{user.username}}</span>@if(user.newMessagesCount > 0) {<span class="messages-count">{{user.newMessagesCount}}</span>}</p>
 }

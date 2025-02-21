@@ -2,15 +2,18 @@
 
 @use '@angular/material' as mat;
 
+html {
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
 // Customize the entire app. Change :root to your selector if you want to scope the styles.
 :root {
-  --ui-font-size: 1.6rem;
-  --content-font-size: 1.4rem;
   --app-max-width: 835px;
-  --title-font-size: 2.4rem;
   --form-max-width: 420px;
   --main-color: #7763C5;
-
+  
   @include mat.button-overrides((
     container-color: var(--main-color),
     label-text-color: #fff,
@@ -26,20 +29,71 @@
 
 }
 
-html {
-  font-family: Inter;
-  font-size: 12px;
+body {
+  background-color: #eee;
+  padding: 40px 0;
+  margin: 0;
+  font-size: 1rem;
 }
 
 body {
   margin: 0;
-  padding-top: calc(var(--mat-toolbar-standard-height) + 6rem);
+  padding-top: calc(var(--mat-toolbar-standard-height) + 1rem);
   padding-bottom: 2rem;
+}
+
+.app {
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 1rem;
+  padding-left: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (min-width: 960px) {
+  .app {
+      max-width: 800px;
+      padding-left: 0;
+      padding-right: 0;
+  }
+}
+
+
+a,
+a:visited {
+    text-decoration: none;
+    color: #06f;
+}
+
+a:hover {
+    text-decoration: underline;
+    color: #003c97;
+}
+
+input[type="text"],
+input[type="password"] {
+    height: auto;
+    width: 100%;
+    font-size: 1rem;
+    padding: 0.5rem;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    border: none;
+    border-radius: 0.1rem;
+    width: 100%;
+    cursor: pointer;
 }
 
 .chat-wrapper {
     display: flex;
     height: 80vh;
+    width: 100%;
 }
 
 .user {
