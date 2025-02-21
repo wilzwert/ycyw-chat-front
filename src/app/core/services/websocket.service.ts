@@ -4,6 +4,8 @@ import { Client, StompSubscription} from '@stomp/stompjs';
 import { Message } from '../models/message.interface';
 import { Subscription } from '../models/subscription.interface';
 import { SubscriptionCallBack } from '../types/subscription-callback.type';
+import { Conversation } from '../models/conversation.interface';
+import { MessageType } from '../models/message-type';
 
 export type ConnectionCallBack = () => void;
 
@@ -112,6 +114,26 @@ export class WebsocketService {
         this.subscriptions = this.subscriptions.filter((s: Subscription) => s.destination != destination)
       }
     }
+  }
+
+  private createMessage(conversation: Conversation, messageType: MessageType, content: string): Message {
+    return {
+      sender: conversation.currentUser, 
+      conversationId: conversation.conversationId, 
+      type: messageType,
+      content: content,
+      recipient: conversation.recipient.username
+      } as Message;
+  }
+
+  sendSupportMessage(message: Message) :void {
+    this.sendMessage('/app/support', message);
+  }
+
+  sendPrivateMessage(conversation: Conversation, messageType: MessageType,  content: string = '') :Message {
+    const message = this.createMessage(conversation, messageType, content);
+    this.sendMessage('/app/private', message);
+    return message;
   }
 
   sendMessage(destination: string, message: Message): void {

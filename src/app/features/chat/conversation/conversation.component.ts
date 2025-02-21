@@ -8,6 +8,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ChatHistoryEntry } from '../../../core/models/chat-history-entry';
 import { BehaviorSubject, distinctUntilChanged, filter, interval, merge, Subject, switchMap, takeUntil, tap, timer } from 'rxjs';
 import { NotificationService } from '../../../core/services/notification.service';
+import { Conversation } from '../../../core/models/conversation.interface';
 
 @Component({
   selector: 'app-conversation',
@@ -23,6 +24,11 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
   @Input({required: true}) recipient!: User;
   @Input({required: true}) username!: string;
   @Output() remove = new EventEmitter<User>();
+
+  /**
+   * Current conversation
+   */
+  conversation!: Conversation;
 
   /**
    * Make MessageType enum available to template
@@ -89,10 +95,8 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
    * Sends a message when the message form is submitted
    */
   public send() :void {
-    const message: Message = {sender: this.username, recipient: this.recipient.username, type: MessageType.MESSAGE, content: this.form.value.message, conversationId: this.recipient.conversationId};
-    // TODO : sendMessage should return an observable so that we can watch for errors ?
-    this.websocketService.sendMessage("/app/private", message);
-    this.addMessage(message);
+    // TODO : sendPrivateMessage should return an observable so that we can watch for errors ?
+    this.addMessage(this.websocketService.sendPrivateMessage(this.conversation, MessageType.MESSAGE, this.form.value.message));
     this.form.reset();
     this.stopTyping$.next();
   }
@@ -101,8 +105,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
    * Inform the recipient that the current user is typing
    */
   private informTyping(): void {
-    const message: Message = {sender: this.username, recipient: this.recipient.username, type: (this.isTyping ? MessageType.TYPING : MessageType.STOP_TYPING) , content: "", conversationId: this.recipient.conversationId};
-    this.websocketService.sendMessage("/app/private", message);
+    this.websocketService.sendPrivateMessage(this.conversation, (this.isTyping ? MessageType.TYPING : MessageType.STOP_TYPING));
   }
 
   /**
@@ -154,29 +157,28 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
   private restoreHistory(chatHistoryEntry: ChatHistoryEntry) :void {
     chatHistoryEntry.messages.forEach(m => this.messages.push(m));
     // inform the recipient that the user rejoined the chat
-    const message: Message = {sender: this.username, recipient: this.recipient.username, type: MessageType.JOIN, content: "", conversationId: this.recipient.conversationId};
-    this.websocketService.sendMessage("/app/private", message);
+    this.websocketService.sendPrivateMessage(this.conversation, MessageType.JOIN);
   }
 
   /**
    * Sends a ping to the distant user / recipient
    */
   private ping() :void {
-    this.websocketService.sendMessage("/app/private", {type: MessageType.PING, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
+    this.websocketService.sendPrivateMessage(this.conversation, MessageType.PING);
   }
 
   /**
    * Repy to a ping message from the distant user / recipient
    */
   private replyToPing(): void {
-    this.websocketService.sendMessage("/app/private", {type: MessageType.PING_RESPONSE, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
+    this.websocketService.sendPrivateMessage(this.conversation, MessageType.PING_RESPONSE);
   }
 
   /**
    * Close the chat, ie consider it is completed
    */
   public close(): void {
-    this.websocketService.sendMessage("/app/private", {type: MessageType.CLOSE, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
+    this.websocketService.sendPrivateMessage(this.conversation, MessageType.CLOSE);
     this.end();
   }
 
@@ -198,7 +200,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
   }
 
   public ngOnInit(): void {
-    this.destination = `/user/queue/messages/${this.recipient.conversationId}`;
+    this.conversation = {currentUser: this.username, recipient: this.recipient, conversationId: this.recipient.conversationId} as Conversation;
     let chatHistoryEntry = this.chatHistoryService.getHistory(this.recipient.conversationId);
     if(chatHistoryEntry) {
       this.restoreHistory(chatHistoryEntry);
@@ -214,7 +216,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
   }
 
   public ngOnDestroy(): void {
-    this.websocketService.sendMessage("/app/private", {type: MessageType.QUIT, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
+    this.websocketService.sendPrivateMessage(this.conversation, MessageType.QUIT);
     this.websocketService.unsubscribe(`/user/queue/messages/${this.recipient.conversationId}`, null);
   }
 
