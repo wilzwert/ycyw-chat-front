@@ -51,7 +51,7 @@ export class ChatComponent implements OnInit {
     }
     else {
       this.websocketService.subscribe(`/user/queue/messages`, this.receiveMessage.bind(this));
-      this.websocketService.sendMessage('/app/support', {sender: this.currentUsername, type: MessageType.START, content: '', } as Message);
+      this.websocketService.sendSupportMessage({sender: this.currentUsername, type: MessageType.START, content: '', } as Message);
     }
   }
 
@@ -91,6 +91,6 @@ export class ChatComponent implements OnInit {
   public ngOnDestroy(): void {
     // emit to Subject to unsubscribe from observables
     this.destroy$.next(true);
-    this.websocketService.sendMessage("/app/support", {type: MessageType.QUIT, content: "", sender: this.currentUsername, recipient: "", conversationId: this.conversationId} as Message);
+    this.websocketService.sendSupportMessage({type: MessageType.QUIT, content: "", sender: this.currentUsername, recipient: "", conversationId: this.conversationId} as Message);
   }
 }

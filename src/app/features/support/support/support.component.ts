@@ -71,7 +71,7 @@ export class SupportComponent implements SupportContext, OnInit {
 
   public handleUser(user: User) :void {
       // send handle message
-      this.websocketService.sendMessage("/app/support", {type: MessageType.HANDLE, sender: this.currentUsername, recipient: user.username, content: user.username, conversationId: user.conversationId} as Message);
+      this.websocketService.sendSupportMessage({type: MessageType.HANDLE, sender: this.currentUsername, recipient: user.username, content: user.username, conversationId: user.conversationId} as Message);
 
       // add user to active users
       this.activeUsers.push(user);
