@@ -4,9 +4,9 @@ import { User } from '../../../core/models/user.interface';
 import { WebsocketService } from '../../../core/services/websocket.service';
 import { Message } from '../../../core/models/message.interface';
 import { MessageType } from '../../../core/models/message-type';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ChatHistoryEntry } from '../../../core/models/chat-history-entry';
-import { distinctUntilChanged, filter, merge, Subject, switchMap, tap, timer } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, filter, interval, merge, Subject, switchMap, takeUntil, tap, timer } from 'rxjs';
 import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
@@ -17,8 +17,8 @@ import { NotificationService } from '../../../core/services/notification.service
   styleUrl: './conversation.component.scss'
 })
 export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  {
-  static TIMEOUT = 5;
-  static PING_DELAY = 2;
+  static TIMEOUT = 30;
+  static PING_DELAY = 5;
 
   @Input({required: true}) recipient!: User;
   @Input({required: true}) username!: string;
@@ -29,14 +29,12 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
   recipientUnavailable = false;
   messages: Message[] = [];
   MessageType = MessageType;
-  private lastReceived: number = Date.now();
+  private lastReceived$ = new BehaviorSubject<number>(Date.now());
+  private stopPing$ = new Subject<void>();
   public form:FormGroup;
 
-  private stopTyping$ = new Subject<void>();;
-
+  private stopTyping$ = new Subject<void>();
   private isTyping: boolean = false;
-
-  private pingTimeout:any = null;
 
   constructor(private websocketService: WebsocketService, private fb: FormBuilder, private chatHistoryService: ChatHistoryService, private notificationService: NotificationService) {
     this.form = this.fb.group({
@@ -80,18 +78,18 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
 
 
   private receiveMessage(message: Message) :void {
-    this.lastReceived = Date.now();
+    this.lastReceived$.next(Date.now());
     switch(message.type) {
       case MessageType.TYPING: this.recipientIsTyping = true;break;
       case MessageType.STOP_TYPING: this.recipientIsTyping = false; break;
       case MessageType.MESSAGE: 
       case MessageType.JOIN:
       case MessageType.QUIT:
-      case MessageType.TIMEOUT:
         this.addMessage(message); 
         break;
       case MessageType.CLOSE:
         this.addMessage(message);
+        this.notificationService.confirmation(`Chat with ${this.recipient.username} has ended.`);
         this.end();
         break;
       case MessageType.PING: this.replyToPing(); break;
@@ -113,67 +111,43 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
     this.websocketService.sendMessage("/app/private", message);
   }
 
+  /**
+   * Sends a ping to the distant user / recipient
+   */
+  private ping() :void {
+    this.websocketService.sendMessage("/app/private", {type: MessageType.PING, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
+  }
+
+  /**
+   * Repy to a ping message from the distant user / recipient
+   */
   private replyToPing(): void {
     this.websocketService.sendMessage("/app/private", {type: MessageType.PING_RESPONSE, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
   }
 
-  checkPingTimeout() {
-    if(this.pingTimeout) {
-      clearTimeout(this.pingTimeout);
-     }
-    let delay = Math.floor((Date.now() - this.lastReceived) / 1000);
-    if(delay > ConversationComponent.TIMEOUT) {
-        this.addMessage({type: MessageType.TIMEOUT, content: "User is unreachable ; chat will be closed and history will be deleted.", sender: this.recipient.username, recipient: this.username, conversationId: this.recipient.conversationId});
-        this.chatHistoryService.removeHistory(this.recipient);
-        this.notificationService.error(`User ${this.recipient.username} is unreachable ; history has been deleted.`);
-        this.remove.emit(this.recipient);
-    }
-    else {
-      this.pingTimeout = setTimeout(this.ping.bind(this), ConversationComponent.PING_DELAY*1000);
-    }
-}
-
-  // ping the recipient to check if it is available
-  private ping(): void {
-      if(this.pingTimeout) {
-       clearTimeout(this.pingTimeout);
-      }
-      let delay = Math.floor((Date.now() - this.lastReceived) / 1000);
-      // nothing happened for a certain amount of time
-      if(delay >= ConversationComponent.TIMEOUT) {
-          // let's send a ping message
-          // FIXME : here we catch an exception in case the WebSocketService's client is not connected
-          // but we should probably make the client connection status an Observable to trigger sendMessage(s) when connection becomes available
-          // for this POC a "repeat" with a timeout will do though
-          // TODO : use subject or observable instead of timeouts
-          try {
-            this.websocketService.sendMessage("/app/private", {type: MessageType.PING, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
-            // next time we check we specifically check if something happend after our ping message
-            this.pingTimeout = setTimeout(this.checkPingTimeout.bind(this), ConversationComponent.PING_DELAY*1000);
-          }
-          catch(e) {
-            // alright, we caught an exception, let's try again later
-            this.pingTimeout = setTimeout(this.ping.bind(this), ConversationComponent.PING_DELAY*1000);  
-          }
-      }
-      // everything's fine for now, let's check later
-      else {
-        this.pingTimeout = setTimeout(this.ping.bind(this), ConversationComponent.PING_DELAY*1000);
-      }
-  }
-
+  /**
+   * Close the chat, ie consider it is completed
+   */
   public close(): void {
     this.websocketService.sendMessage("/app/private", {type: MessageType.CLOSE, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
     this.end();
   }
 
+  /**
+   * Ends a chat, whatever the reason
+   */
   private end() :void {
     this.chatHistoryService.removeHistory(this.recipient);
-    this.notificationService.confirmation(`Chat with ${this.recipient.username} has ended.`);
-    if(this.pingTimeout) {
-      clearTimeout(this.pingTimeout);
-    }
     this.remove.emit(this.recipient);
+  }
+
+  /**
+   * Ping timeout occured, chat must end
+   */
+  private timeout(): void {
+    this.addMessage({type: MessageType.TIMEOUT, content: "User is unreachable ; chat will be closed and history will be deleted.", sender: this.recipient.username, recipient: this.username, conversationId: this.recipient.conversationId});
+    this.notificationService.error(`User ${this.recipient.username} is unreachable ; history has been deleted.`);
+    this.end();
   }
 
   public ngOnInit(): void {
@@ -187,8 +161,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
     }
     this.websocketService.subscribe(`/user/queue/messages/${this.recipient.conversationId}`, this.receiveMessage.bind(this));
 
-    // start ping
-    this.ping();
+    this.startPinging();
 
     window.onbeforeunload = () => this.ngOnDestroy();
   }
@@ -196,12 +169,27 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
   public ngOnDestroy(): void {
     this.websocketService.sendMessage("/app/private", {type: MessageType.QUIT, content: "", sender: this.username, recipient: this.recipient.username, conversationId: this.recipient.conversationId});
     this.websocketService.unsubscribe(`/user/queue/messages/${this.recipient.conversationId}`, null);
-    if(this.pingTimeout) {
-      clearTimeout(this.pingTimeout);
-    }
   }
 
-  public ngAfterViewInit(): void {
+  private startPinging() :void {
+    // prevent multiple pings
+    this.stopPing$.next();
+    interval(ConversationComponent.PING_DELAY*1000)
+    .pipe(
+      switchMap(() => this.lastReceived$.asObservable()),
+      tap(lastReceived => {
+          if(Date.now() - lastReceived > ConversationComponent.TIMEOUT*1000) {            
+            this.stopPing$.next();
+            this.timeout();
+          }
+      }),
+      filter(lastReceived => Date.now() - lastReceived > ConversationComponent.PING_DELAY*1000), // ping only if necessary
+      tap(this.ping.bind(this)), // Exécuter le ping
+      takeUntil(this.stopPing$) // Arrêter le ping lorsque stop$ émet un signal
+    ).subscribe();
+  }
+
+  private watchTyping(): void {
     /**
      * merge observables to handle the recipient information about typing status
      */
@@ -225,5 +213,9 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
         ))
       )
     ).subscribe();
+  }
+
+  public ngAfterViewInit(): void {
+    this.watchTyping();
   }
 }
