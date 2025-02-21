@@ -23,18 +23,44 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
   @Input({required: true}) recipient!: User;
   @Input({required: true}) username!: string;
   @Output() remove = new EventEmitter<User>();
+
+  /**
+   * Make MessageType enum available to template
+   */
+  MessageType = MessageType;
   
+  /**
+   * STOMP / Websocket destination
+   */
   destination?: String;
+
+  /**
+   * Recipient status
+   */
   recipientIsTyping = false;
   recipientUnavailable = false;
-  messages: Message[] = [];
-  MessageType = MessageType;
-  private lastReceived$ = new BehaviorSubject<number>(Date.now());
-  private stopPing$ = new Subject<void>();
-  public form:FormGroup;
 
+  /**
+   * Current user status
+   */
   private stopTyping$ = new Subject<void>();
   private isTyping: boolean = false;
+
+  /**
+   * Current messages
+   */
+  messages: Message[] = [];
+  
+  /**
+   * Observables used to handle pings / timeout
+   */
+  private lastReceived$ = new BehaviorSubject<number>(Date.now());
+  private stopPing$ = new Subject<void>();
+
+  /**
+   * Message form
+   */
+  public form:FormGroup;
 
   constructor(private websocketService: WebsocketService, private fb: FormBuilder, private chatHistoryService: ChatHistoryService, private notificationService: NotificationService) {
     this.form = this.fb.group({
@@ -47,13 +73,21 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
     });
   }
 
+  /**
+   * Adds a message to the UI, and adds it to the history if necessary
+   * @param message the message
+   */
   private addMessage(message: Message) :void {
     this.messages.push(message);
+    // only messages actually typed by the user are added to the history
     if(message.type == MessageType.MESSAGE) {
       this.chatHistoryService.addMessage(this.recipient, message);
     }
   }
 
+  /**
+   * Sends a message when the message form is submitted
+   */
   public send() :void {
     const message: Message = {sender: this.username, recipient: this.recipient.username, type: MessageType.MESSAGE, content: this.form.value.message, conversationId: this.recipient.conversationId};
     // TODO : sendMessage should return an observable so that we can watch for errors ?
@@ -63,21 +97,27 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
     this.stopTyping$.next();
   }
 
+  /**
+   * Inform the recipient that the current user is typing
+   */
   private informTyping(): void {
     const message: Message = {sender: this.username, recipient: this.recipient.username, type: (this.isTyping ? MessageType.TYPING : MessageType.STOP_TYPING) , content: "", conversationId: this.recipient.conversationId};
     this.websocketService.sendMessage("/app/private", message);
   }
 
-  
   /**
    * When message input blurs, ie stop typing
    */
   public onBlur() :void {
     this.stopTyping$.next();
   }
-
-
+  
+  /**
+   * Receive a message from the distant user / the current recipient
+   * @param message the message
+   */
   private receiveMessage(message: Message) :void {
+    // we got data, inform the observable used by pinging 
     this.lastReceived$.next(Date.now());
     switch(message.type) {
       case MessageType.TYPING: this.recipientIsTyping = true;break;
@@ -87,15 +127,18 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
       case MessageType.QUIT:
         this.addMessage(message); 
         break;
+      // conversation has been closed by distant user
       case MessageType.CLOSE:
         this.addMessage(message);
         this.notificationService.confirmation(`Chat with ${this.recipient.username} has ended.`);
         this.end();
         break;
+      // reply to a ping request
       case MessageType.PING: this.replyToPing(); break;
       case MessageType.PING_RESPONSE: break;
     }
 
+    // set recipient status for the template
     if(message.type == MessageType.QUIT || message.type == MessageType.CLOSE) {
       this.recipientUnavailable = true;
     }
@@ -104,6 +147,10 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewInit  
     }
   }
   
+  /**
+   * Restores the conversation with the history provided
+   * @param chatHistoryEntry the history
+   */
   private restoreHistory(chatHistoryEntry: ChatHistoryEntry) :void {
     chatHistoryEntry.messages.forEach(m => this.messages.push(m));
     // inform the recipient that the user rejoined the chat
